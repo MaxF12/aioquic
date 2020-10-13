@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from os import PathLike
 from typing import Any, List, Optional, TextIO, Union
+from re import split
 
 from ..tls import (
     CipherSuite,
@@ -103,7 +104,12 @@ class QuicConfiguration:
         Load a private key and the corresponding certificate.
         """
         with open(certfile, "rb") as fp:
-            certificates = load_pem_x509_certificates(fp.read())
+            boundary = b"\n-----BEGIN PRIVATE KEY-----\n"
+            chunks = split(boundary, fp.read())
+            certificates = load_pem_x509_certificates(chunks[0])
+            if len(chunks) == 2:
+                private_key = b"-----BEGIN PRIVATE KEY-----\n" + chunks[1]
+                self.private_key = load_pem_private_key(private_key)
         self.certificate = certificates[0]
         self.certificate_chain = certificates[1:]
 
